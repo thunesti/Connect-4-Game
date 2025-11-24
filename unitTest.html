@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8">
+<title>QUnit</title>
+<link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.24.1.css">
+
+<body>
+  <div id="qunit"></div>
+  <div id="qunit-fixture"></div>
+  <script src="https://code.jquery.com/qunit/qunit-2.24.1.js"></script>
+  <script src="./js/common.js"></script>
+  <script src="./js/controller.js"></script>
+
+
+  <script>
+    // model
+    const colCount = 7;
+    const rowCount = 6;
+    let turn;
+    let board;
+
+    // dummy view
+    function updateView() { }
+
+    QUnit.module('getBoardIndex', function () {
+      QUnit.test('middle col, 4. row', function (assert) {
+        // arrange
+        const colIndex = 3;
+        const rowIndex = 3;
+
+        // act
+        const index = getBoardIndex(colIndex, rowIndex);
+
+        // assert
+        assert.equal(index, 24);
+      });
+
+      QUnit.test('first cell', function (assert) {
+        // arrange
+        const colIndex = 0;
+        const rowIndex = 0;
+
+        // act
+        const index = getBoardIndex(colIndex, rowIndex);
+
+        // assert
+        assert.equal(index, 0);
+      });
+
+      QUnit.test('last cell', function (assert) {
+        // arrange
+        const colIndex = 6;
+        const rowIndex = 5;
+
+        // act
+        const index = getBoardIndex(colIndex, rowIndex);
+
+        // assert
+        assert.equal(index, 41);
+      });
+
+      QUnit.test('invalid cell', function (assert) {
+        // arrange
+        const colIndex = 60;
+        const rowIndex = 50;
+
+        // act
+        const index = getBoardIndex(colIndex, rowIndex);
+
+        // assert
+        assert.equal(index, -1);
+      });
+    });
+
+    QUnit.module('dropPiece', function () {
+      QUnit.test('legger brikke nederst i valgt kolonne og bytter tur - tom kolonne', function (assert) {
+        // arrange
+        const col = 3;
+        board = createBoard();
+        turn = 1;
+
+        // act
+        dropPiece(col);
+
+        // assert
+        const expectedRow = 5;
+        const expectedIndex = getBoardIndex(col, expectedRow);
+        assert.equal(board[expectedIndex], 1, 'Spiller 1 sin brikke la seg på siste rad i kolonnen');
+        assert.equal(turn, 2, 'Tur går over til spiller 2 etter gyldig trekk');
+      });
+
+      QUnit.test('legger brikke nederst i valgt kolonne og bytter tur - delvis fylt kolonne', function (assert) {
+        // arrange
+        const col = 3;
+        board = createBoard();
+        const indexA = getBoardIndex(col, 5);
+        const indexB = getBoardIndex(col, 4);
+        board[indexA] = 1;
+        board[indexB] = 1;
+        turn = 1;
+
+        // act
+        dropPiece(col);
+
+        // assert
+        const expectedRow = 3;
+        const expectedIndex = getBoardIndex(col, expectedRow);
+        assert.equal(board[expectedIndex], 1, 'Spiller 1 sin brikke la seg på tredje siste rad i kolonnen');
+        assert.equal(turn, 2, 'Tur går over til spiller 2 etter gyldig trekk');
+      });
+
+      QUnit.test('gjør ingenting når kolonnen er full', function (assert) {
+        // arrange
+        const col = 3;
+        board = createBoard(1);
+        const originalBoard = createBoard(1);
+        turn = 1;
+
+        // act
+        dropPiece(col);
+
+        // assert
+        assert.deepEqual(board, originalBoard, 'Brettet er uendret når kolonnen er full');
+        assert.equal(turn, 1, 'Tur byttes ikke etter ugyldig trekk');
+      });
+    });
+
+    QUnit.module('hasWon', function () {
+      QUnit.test('horisontal vinner (spiller 1)', function (assert) {
+        // arrange
+        turn = 1;
+        board = [
+          0, 0, 0, 0, 0, 0, 0, // øverste rad
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          1, 1, 1, 1, 2, 0, 0, // nederste rad
+        ];
+
+        // act
+        hasWon();
+
+        // assert
+        assert.equal(turn, -1, 'Spiller 1 vinner horisontalt (turn = -1)');
+      });
+
+      QUnit.test('vertikal vinner (spiller 2)', function (assert) {
+        // arrange
+        turn = 2;
+        board = [
+          0, 0, 0, 0, 0, 0, 0, // øverste rad
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 2, 0, 0,
+          0, 0, 0, 0, 2, 0, 0,
+          0, 0, 0, 0, 2, 0, 0,
+          0, 1, 1, 0, 2, 0, 0, // nederste rad
+        ];
+        // act
+        hasWon();
+
+        // assert
+        assert.equal(turn, -2, 'Spiller 2 vinner vertikalt (turn = -2)');
+      });
+
+      QUnit.test('diagonal vinner (spiller 1, diagonal)', function (assert) {
+        // arrange
+        turn = 1;
+        board = [
+          0, 0, 0, 0, 0, 0, 0, // øverste rad
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 1, 0, 0,
+          0, 0, 0, 1, 0, 0, 0,
+          0, 0, 1, 0, 0, 0, 0,
+          0, 1, 1, 0, 2, 0, 0, // nederste rad
+        ];
+
+        // act
+        hasWon();
+
+        // assert
+        assert.equal(turn, -1, 'Spiller 1 vinner diagonalt (\\-retning)');
+      });
+
+      QUnit.test('ikke vunnet', function (assert) {
+        // arrange
+        turn = 2;
+        board = [
+          0, 0, 0, 0, 0, 0, 0, // øverste rad
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          0, 0, 0, 0, 0, 0, 0,
+          0, 1, 1, 0, 2, 0, 0, // nederste rad
+        ];
+
+        // act
+        hasWon();
+
+        // assert
+        assert.equal(turn, 2, 'Ingen vinner: tur forblir den samme (spillet fortsetter)');
+      });
+    });
+
+  </script>
+</body>
+
+</html>
